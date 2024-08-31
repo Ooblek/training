@@ -14,10 +14,6 @@ Original file is located at
 # 'datasets' is a package for providing access to a vast range of datasets, installed by the third command.
 # The last command ensures that 'torch' version is at least 1.10. If it's already installed but the version is lower, it will be upgraded.
 
-!pip -q install huggingface_hub transformers peft bitsandbytes
-!pip -q install trl xformers
-!pip -q install datasets
-!pip install torch>=1.10
 
 # Import necessary modules from the transformers library
 # AutoModelForCausalLM: This is a class for causal language models. It's used for tasks like text generation.
@@ -87,10 +83,6 @@ gradient_accumulation_steps = 1
 # If bfloat16 is supported, it sets the compute_dtype to torch.bfloat16.
 # If not, it sets the compute_dtype to torch.float16.
 # bfloat16 and float16 are both half-precision floating-point formats, but bfloat16 provides better performance on some hardware.
-if torch.cuda.is_bf16_supported():
-  compute_dtype = torch.bfloat16
-else:
-  compute_dtype = torch.float16
 
 # Load the pre-trained model specified by MODEL_ID using the AutoModelForCausalLM class.
 # The 'trust_remote_code=True' argument allows the execution of code from the model card (if any).
@@ -190,10 +182,8 @@ args = TrainingArguments(
     learning_rate=1e-4,
 
     # 'fp16' is set to True if bfloat16 is not supported, which means the model will use 16-bit floating point precision for training if possible.
-    fp16 = not torch.cuda.is_bf16_supported(),
 
     # 'bf16' is set to True if bfloat16 is supported, which means the model will use bfloat16 precision for training if possible.
-    bf16 = torch.cuda.is_bf16_supported(),
 
     # 'max_steps' is set to -1, which means there is no maximum number of training steps.
     max_steps=-1,
@@ -243,7 +233,7 @@ trainer = SFTTrainer(
 )
 
 # 'device' is set to 'cuda', which means the CUDA device will be used for computations if available.
-device = 'cuda'
+device = 'cpu'
 
 # Import the 'gc' module, which provides an interface to the garbage collector.
 import gc
@@ -255,7 +245,6 @@ import os
 gc.collect()
 
 # Call the 'empty_cache' method of 'torch.cuda' to release all unused cached memory from PyTorch so that it can be used by other GPU applications.
-torch.cuda.empty_cache()
 
 # Call the 'train' method of the 'trainer' object to start the training process.
 # This method will fine-tune the model on the training dataset according to the parameters specified in the 'args' object.
