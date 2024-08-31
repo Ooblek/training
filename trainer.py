@@ -103,16 +103,6 @@ EOS_TOKEN=tokenizer.eos_token_id
 # This line simply prints the contents of the 'dataset' variable.
 # 'dataset' is expected to be a Dataset object loaded from the 'datasets' library.
 # Printing it will display information about the dataset such as the number of samples, the features, and a few example data points.
-dataset
-
-# Select a subset of the data for faster processing
-dataset = dataset.select(range(2))
-
-
-# This line simply prints the contents of the 'dataset' variable.
-# 'dataset' is expected to be a Dataset object loaded from the 'datasets' library.
-# Printing it will display information about the dataset such as the number of samples, the features, and a few example data points.
-dataset
 
 def formatting_prompts_func(examples):
     # Extract the conversations from the examples.
@@ -161,7 +151,6 @@ def create_prompt_formats(sample):
 dataset = dataset.map(create_prompt_formats)
 
 # Print the 9th example from the 'text' field of the dataset to check the result.
-print(dataset['text'][8])
 
 
 
