@@ -39,30 +39,47 @@ from trl import SFTTrainer
 
 # Import the yaml module. This module is used for working with YAML files.
 import yaml
-
+import numpy as np
 # Import the torch library. This library provides tools for training and running deep learning models.
 import torch
+from datasets import load_metric
+metric = load_metric('accuracy')
+
+def compute_metrics(eval_pred):
+    predictions, labels = eval_pred
+    predictions = np.argmax(predictions, axis=1)
+    return metric.compute(predictions=predictions, references=labels)
+
 
 # MODEL_ID is a string that specifies the identifier of the pre-trained model that will be fine-tuned.
 # In this case, the model is 'Phi-3-mini-4k-instruct' from Microsoft.
 MODEL_ID = "microsoft/Phi-3.5-mini-instruct"
 
+# Maximum epocs to train
+MAX_TRAIN_EPOCHS=15
+
+# MAX_SEQ_LENGTH is an integer that specifies the maximum length of the sequences that the model will handle.
+#MAX_SEQ_LENGTH = 2048
+# This is the max sequence lenght that works
+MAX_SEQ_LENGTH = 1024
+
+
 # NEW_MODEL_NAME is a string that specifies the name of the new model after fine-tuning.
 # Here, the new model will be named 'opus-samantha-phi-3-mini-4k'.
-NEW_MODEL_NAME = "New-Model-phi-3.5-mini-4k"
+#NEW_MODEL_NAME = "".join("Epoch_", MAX_TRAIN_EPOCHS,"-", MAX_SEQ_LENGTH, "-phi-3.5-mini-4k")
+NEW_MODEL_NAME = "Epoch_" + str(MAX_TRAIN_EPOCHS) + "-" +str(MAX_SEQ_LENGTH) + "-phi-3.5-mini-4k"
+
 
 # DATASET_NAME is a string that specifies the name of the dataset to be used for fine-tuning.
 # Replace "replace with your dataset" with the actual name of your dataset.
-DATASET_NAME = "neil-code/dialogsum-test"
-
+#DATASET_NAME = "neil-code/dialogsum-test"
+DATASET_NAME = "AlexanderBenady/lecture_summary_translations_english_spanish"
 # SPLIT specifies the portion of the dataset to be used. In this case, the 'train' split of the dataset will be used.
 SPLIT = "train"
 
-# MAX_SEQ_LENGTH is an integer that specifies the maximum length of the sequences that the model will handle.
-MAX_SEQ_LENGTH = 2048
-
 # num_train_epochs is an integer that specifies the number of times the training process will go through the entire dataset.
 num_train_epochs = 1
+
 
 # license is a string that specifies the license under which the model is distributed. In this case, it's Apache License 2.0.
 license = "apache-2.0"
@@ -95,6 +112,7 @@ tokenizer = AutoTokenizer.from_pretrained(MODEL_ID, trust_remote_code=True)
 # Load the dataset specified by DATASET_NAME using the load_dataset function.
 # The 'split="train"' argument specifies that we want to load the training split of the dataset.
 dataset = load_dataset(DATASET_NAME, split="train")
+dataset_test = load_dataset(DATASET_NAME, split="test")
 
 # Get the ID of the end-of-sentence (EOS) token from the tokenizer and store it in EOS_TOKEN.
 # This token is used to mark the end of a sentence in the input data.
@@ -135,8 +153,8 @@ def create_prompt_formats(sample):
 
     blurb = f"\n{INTRO_BLURB}"
     instruction = f"{INSTRUCTION_KEY}"
-    input_context = f"{sample['dialogue']}" if sample["dialogue"] else None
-    response = f"{RESPONSE_KEY}\n{sample['summary']}"
+    input_context = f"{sample['Lecture']}" if sample["Lecture"] else None
+    response = f"{RESPONSE_KEY}\n{sample['Summary']}"
     end = f"{END_KEY}"
 
     parts = [part for part in [blurb, instruction, input_context, response, end] if part]
@@ -149,6 +167,7 @@ def create_prompt_formats(sample):
 # Apply the formatting function to the dataset using the map method.
 # The 'batched=True' argument means that the function is applied to batches of examples.
 dataset = dataset.map(create_prompt_formats)
+dataset_test = dataset_test.map(create_prompt_formats)
 
 # Print the 9th example from the 'text' field of the dataset to check the result.
 
@@ -178,7 +197,7 @@ args = TrainingArguments(
     max_steps=-1,
 
     # 'num_train_epochs' is set to 3, which means the training process will go through the entire dataset 3 times.
-    num_train_epochs=3,
+    num_train_epochs=MAX_TRAIN_EPOCHS,
 
     # 'save_strategy' is set to "epoch", which means the model is saved at the end of each epoch.
     save_strategy="epoch",
@@ -194,6 +213,7 @@ args = TrainingArguments(
 
     # 'lr_scheduler_type' is set to "linear", which means the learning rate scheduler type is linear.
     lr_scheduler_type="linear",
+    
     report_to=None
 )
 
@@ -210,19 +230,22 @@ trainer = SFTTrainer(
 
     # 'train_dataset' is the dataset that will be used for training.
     train_dataset=dataset,
+    test_dataset= dataset_test,
+    compute_metrics= compute_metrics,
 
     # 'dataset_text_field' is the key in the dataset that contains the text data.
     dataset_text_field="text",
 
     # 'max_seq_length' is the maximum length of the sequences that the model will handle.
-    max_seq_length=128,
+    max_seq_length=MAX_SEQ_LENGTH,
+    #max_seq_length=1024,
 
     # 'formatting_func' is the function that will be used to format the prompts in the dataset.
     formatting_func=create_prompt_formats
 )
 
 # 'device' is set to 'cuda', which means the CUDA device will be used for computations if available.
-device = 'cpu'
+device = 'cuda'
 
 # Import the 'gc' module, which provides an interface to the garbage collector.
 import gc
